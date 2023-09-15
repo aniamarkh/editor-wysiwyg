@@ -1,10 +1,15 @@
-// export interface StateNode {
-//   type: 'h1' | 'p' | 'img';
-//   content: string;
-// }
+export interface CaretPosition {
+  path: number[];
+  offset: number;
+}
+
+export interface CurrentState {
+  content: string;
+  caretPosition: CaretPosition | null;
+}
 
 export interface State {
-  currentState: string;
-  history: string[];
+  currentState: CurrentState;
+  history: CurrentState[];
   pointer: number;
 }

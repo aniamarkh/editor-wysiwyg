@@ -1,16 +1,14 @@
 import { defineStore } from 'pinia';
-
-export interface State {
-  currentState: string;
-  history: string[];
-  pointer: number;
-}
+import { CaretPosition, State } from '@/types';
 
 export const useStateStore = defineStore({
   id: 'state',
   state: (): State => ({
-    currentState: '',
-    history: [''],
+    currentState: {
+      content: '',
+      caretPosition: null
+    },
+    history: [{ content: '', caretPosition: null }],
     pointer: 0
   }),
   getters: {
@@ -22,25 +20,31 @@ export const useStateStore = defineStore({
     }
   },
   actions: {
-    captureState(currentState: string) {
+    captureState(currentState: string, caretPosition: CaretPosition) {
       if (this.canRedo) this.history = this.history.slice(0, this.pointer + 1);
-      this.currentState = currentState;
-      this.history.push(currentState);
+
+      const stateToCapture = {
+        content: currentState,
+        caretPosition: caretPosition
+      };
+
+      this.currentState = stateToCapture;
+      this.history.push(stateToCapture);
       this.pointer++;
     },
-    undo(): null | string {
+    undo(): void {
+      console.log(this.history);
       if (this.canUndo) {
         this.pointer--;
-        return this.history[this.pointer];
+        this.currentState = this.history[this.pointer];
       }
-      return null;
     },
-    redo(): null | string {
+    redo(): void {
+      console.log(this.history);
       if (this.canRedo) {
         this.pointer++;
-        return this.history[this.pointer];
+        this.currentState = this.history[this.pointer];
       }
-      return null;
     }
   }
 });
