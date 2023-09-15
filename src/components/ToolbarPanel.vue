@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import { inject } from 'vue';
 import BackIcon from './icons/IconBack.vue';
 import ForwardIcon from './icons/IconForward.vue';
 import TitleIcon from './icons/IconTitle.vue';
 import ParagraphIcon from './icons/IconParagraph.vue';
 import ImageIcon from './icons/IconImage.vue';
+
+const ensureFocus = inject<() => void>('ensureFocus');
 </script>
 
 <template>
-  <div class="toolbar">
+  <div class="toolbar" @mousedown.prevent="ensureFocus">
     <button class="toolbar__button">
       <BackIcon />
       <span class="visually-hidden">Back</span>
