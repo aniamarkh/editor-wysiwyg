@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, provide, Ref } from 'vue';
+import { ref, provide, Ref, onMounted } from 'vue';
 import { useStateStore } from './stores/state';
 import ToolbarPanel from './components/ToolbarPanel.vue';
 // import EditableContent from './components/EditableContent.vue';
@@ -11,12 +11,19 @@ const ensureFocus = () => {
   if (editorContainer.value) editorContainer.value.focus();
 };
 provide('ensureFocus', ensureFocus);
+onMounted(ensureFocus);
 </script>
 
 <template>
   <div class="editor-wrapper">
     <ToolbarPanel />
-    <div class="editor" contenteditable="true" spellcheck="true" ref="editorContainer">
+    <div
+      class="editor"
+      contenteditable="true"
+      spellcheck="true"
+      ref="editorContainer"
+      data-placeholder="Enter your text here..."
+    >
       <template v-for="(item, index) in store.currentState">
         <h1 v-if="item.type === 'h1'" :key="`h1-${index}`">{{ item.content }}</h1>
         <p v-else-if="item.type === 'p'" :key="`p-${index}`">{{ item.content }}</p>
@@ -46,5 +53,12 @@ provide('ensureFocus', ensureFocus);
 
 [contenteditable]:focus {
   outline: 0px solid transparent;
+}
+
+[contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  font-size: 15px;
+  color: #444444;
+  pointer-events: none;
 }
 </style>
