@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import { ref, provide, Ref, onMounted } from 'vue';
-import { useStateStore } from './stores/state';
-import ToolbarPanel from './components/ToolbarPanel.vue';
-// import EditableContent from './components/EditableContent.vue';
+import { useStateStore } from '@/stores/state';
+import { useDebounce } from '@/utils';
+import ToolbarPanel from '@/components/ToolbarPanel.vue';
 const editorContainer: Ref<null | HTMLElement> = ref(null);
 
 const store = useStateStore();
+const debounce = useDebounce();
 
+// фокус на эдиторе
 const ensureFocus = () => {
   if (editorContainer.value) editorContainer.value.focus();
 };
 provide('ensureFocus', ensureFocus);
+provide('editorContainerRef', editorContainer);
+
+const writeInput = () => {
+  debounce(() => {
+    if (editorContainer.value) store.captureState(editorContainer.value.innerHTML);
+    // console.log('state: ', store.$state.currentState);
+    // console.log('history: ', store.$state.history);
+  }, 500);
+};
+
 onMounted(ensureFocus);
 </script>
 
@@ -23,13 +35,8 @@ onMounted(ensureFocus);
       spellcheck="true"
       ref="editorContainer"
       data-placeholder="Enter your text here..."
-    >
-      <template v-for="(item, index) in store.currentState">
-        <h1 v-if="item.type === 'h1'" :key="`h1-${index}`">{{ item.content }}</h1>
-        <p v-else-if="item.type === 'p'" :key="`p-${index}`">{{ item.content }}</p>
-        <img v-else-if="item.type === 'img'" :key="`img-${index}`" :src="item.content" />
-      </template>
-    </div>
+      @input="writeInput"
+    ></div>
   </div>
 </template>
 

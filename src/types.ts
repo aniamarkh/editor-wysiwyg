@@ -1,10 +1,10 @@
-export interface StateNode {
-  type: 'h1' | 'p' | 'img';
-  content: string;
-}
+// export interface StateNode {
+//   type: 'h1' | 'p' | 'img';
+//   content: string;
+// }
 
 export interface State {
-  currentState: StateNode[];
-  history: StateNode[][];
+  currentState: string;
+  history: string[];
   pointer: number;
 }
