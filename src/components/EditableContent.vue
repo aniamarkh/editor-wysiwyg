@@ -1,7 +1,8 @@
 <script setup lang="ts">
-defineProps({
-  contentDiv: Object
-});
+import { StateNode } from '@/types';
+defineProps<{
+  content: StateNode[];
+}>();
 </script>
 
 <template>
