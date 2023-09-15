@@ -1,8 +1,5 @@
 import { defineStore } from 'pinia';
 import { State, StateNode } from '@/types';
-import { useHistoryStore } from './history';
-
-const history = useHistoryStore();
 
 export const useStateStore = defineStore({
   id: 'state',
@@ -25,12 +22,29 @@ export const useStateStore = defineStore({
       //   content:
       //     'Товарищи! новая модель организационной деятельности требуют от нас анализа направлений прогрессивного развития. Задача организации, в особенности же постоянный количественный рост и сфера нашей активности требуют от нас анализа позиций, занимаемых участниками в отношении поставленных задач. Задача организации, в особенности же реализация намеченных плановых заданий требуют от нас анализа системы обучения кадров, соответствует насущным потребностям.'
       // }
-    ]
+    ],
+    history: [],
+    pointer: -1
   }),
   actions: {
     captureState(currentState: StateNode[]) {
       this.currentState = currentState;
-      history.captureHistory(currentState);
+      this.history.push(currentState);
+      this.pointer++;
+    },
+    undo(): null | StateNode[] {
+      if (this.pointer > 0) {
+        this.pointer--;
+        return this.history[this.pointer];
+      }
+      return null;
+    },
+    redo(): null | StateNode[] {
+      if (this.pointer < this.history.length - 1) {
+        this.pointer++;
+        return this.history[this.pointer];
+      }
+      return null;
     }
   }
 });

@@ -5,9 +5,6 @@ export interface StateNode {
 
 export interface State {
   currentState: StateNode[];
-}
-
-export interface History {
   history: StateNode[][];
   pointer: number;
 }
