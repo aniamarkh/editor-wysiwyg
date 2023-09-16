@@ -1,13 +1,26 @@
 import { defineStore } from 'pinia';
-import { State } from '../types';
+import { State, StateNode } from '../types';
+
+const initialState: StateNode[] = [
+  {
+    tag: 'h1',
+    content: 'title'
+  },
+  {
+    tag: 'p',
+    content: 'teeeeeeeext'
+  },
+  {
+    tag: 'img',
+    content: 'monkeys.jpg'
+  }
+];
 
 export const useStateStore = defineStore({
   id: 'state',
   state: (): State => ({
-    currentState: {
-      content: ''
-    },
-    history: [{ content: '' }],
+    currentState: initialState,
+    history: [initialState],
     pointer: 0
   }),
   getters: {
@@ -19,15 +32,11 @@ export const useStateStore = defineStore({
     }
   },
   actions: {
-    captureState(currentState: string) {
+    captureState(currentState: StateNode[]) {
       if (this.canRedo) this.history = this.history.slice(0, this.pointer + 1);
 
-      const stateToCapture = {
-        content: currentState
-      };
-
-      this.currentState = stateToCapture;
-      this.history.push(stateToCapture);
+      this.currentState = currentState;
+      this.history.push(currentState);
       this.pointer++;
     },
     undo(): void {

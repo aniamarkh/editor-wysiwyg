@@ -1,9 +1,10 @@
-export interface CurrentState {
+export interface StateNode {
+  tag: 'p' | 'h1' | 'img';
   content: string;
 }
 
 export interface State {
-  currentState: CurrentState;
-  history: CurrentState[];
+  currentState: StateNode[];
+  history: StateNode[][];
   pointer: number;
 }

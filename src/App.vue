@@ -12,9 +12,7 @@ provide('editorContainerRef', editorContainer);
 
 const writeInput = () => {
   debounce(() => {
-    if (!editorContainer.value) return;
-    const currentContent = editorContainer.value.innerHTML;
-    store.captureState(currentContent);
+    console.log('input!');
   }, 500);
 };
 </script>
@@ -29,7 +27,18 @@ const writeInput = () => {
       ref="editorContainer"
       data-placeholder="Enter your text here..."
       @input="writeInput"
-    ></div>
+    >
+      <template v-for="(item, index) in store.currentState">
+        <h1 v-if="item.tag === 'h1'" :key="`h1-${index}`">{{ item.content }}</h1>
+        <p v-else-if="item.tag === 'p'" :key="`p-${index}`">{{ item.content }}</p>
+        <img
+          v-else-if="item.tag === 'img'"
+          :key="`img-${index}`"
+          :src="item.content"
+          alt="Content Image"
+        />
+      </template>
+    </div>
   </div>
 </template>
 
