@@ -1,25 +1,19 @@
 <script setup lang="ts">
 import { inject, ref, Ref } from 'vue';
 import { useStateStore } from '@/stores/state';
-import { restoreCaretPosition } from '@/utils/caret';
 import BackIcon from './icons/IconBack.vue';
 import ForwardIcon from './icons/IconForward.vue';
 import TitleIcon from './icons/IconTitle.vue';
 import ParagraphIcon from './icons/IconParagraph.vue';
 import ImageIcon from './icons/IconImage.vue';
-import { nextTick } from 'vue';
-const editorContainer: Ref<null | HTMLElement> = inject('editorContainerRef', ref(null));
-const ensureFocus = inject<() => void>('ensureFocus');
 
+const editorContainer: Ref<null | HTMLElement> = inject('editorContainerRef', ref(null));
 const store = useStateStore();
 
 const historyHandler = async (action: () => void) => {
-  action();
   if (!editorContainer.value) return;
+  action();
   editorContainer.value.innerHTML = store.currentState.content;
-  await nextTick();
-  if (store.currentState.caretPosition)
-    restoreCaretPosition(editorContainer.value, store.currentState.caretPosition);
 };
 
 const copyHTMLToClipboard = () => {
@@ -28,7 +22,7 @@ const copyHTMLToClipboard = () => {
 </script>
 
 <template>
-  <div class="toolbar" @click="ensureFocus">
+  <div class="toolbar">
     <button class="toolbar__button" :disabled="!store.canUndo" @click="historyHandler(store.undo)">
       <BackIcon :isDisabled="!store.canUndo" />
       <span class="visually-hidden">Back</span>

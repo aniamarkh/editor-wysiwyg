@@ -1,36 +1,22 @@
 <script setup lang="ts">
-import { ref, provide, Ref, onMounted } from 'vue';
+import { ref, Ref, provide } from 'vue';
 import { useStateStore } from '@/stores/state';
 import { useDebounce } from '@/utils/debounce';
-import { saveCaretPosition } from '@/utils/caret';
 import ToolbarPanel from '@/components/ToolbarPanel.vue';
 
 const store = useStateStore();
 const debounce = useDebounce();
-const editorContainer: Ref<null | HTMLElement> = ref(null);
 
-const ensureFocus = () => {
-  if (editorContainer.value) editorContainer.value.focus();
-};
-provide('ensureFocus', ensureFocus);
+const editorContainer: Ref<null | HTMLElement> = ref(null);
 provide('editorContainerRef', editorContainer);
 
 const writeInput = () => {
   debounce(() => {
     if (!editorContainer.value) return;
-
     const currentContent = editorContainer.value.innerHTML;
-    const caretPosition = saveCaretPosition(editorContainer.value);
-    store.captureState(currentContent, caretPosition);
-    // console.log('content: ', store.currentState.content);
-    // console.log('offset: ', store.currentState.caretPosition?.offset);
-    // console.log('path: ', store.currentState.caretPosition?.path);
-
-    // console.log(store.history);
+    store.captureState(currentContent);
   }, 500);
 };
-
-onMounted(ensureFocus);
 </script>
 
 <template>
