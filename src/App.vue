@@ -211,7 +211,7 @@ export default defineComponent({
   line-height: 38px;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .editor-wrapper {
     padding: 40px 30px;
   }
