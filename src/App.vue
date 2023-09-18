@@ -1,7 +1,8 @@
 <script lang="ts">
+import { defineComponent } from 'vue';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, Editor } from '@tiptap/vue-3';
-import Image from '@tiptap/extension-image';
+import { Image as TiptapImage } from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { initialContent } from './assets/content';
 import UndoIcon from './components/icons/IconUndo.vue';
@@ -10,7 +11,7 @@ import TitleIcon from './components/icons/IconTitle.vue';
 import ParagraphIcon from './components/icons/IconParagraph.vue';
 import ImageIcon from './components/icons/IconImage.vue';
 
-export default {
+export default defineComponent({
   components: {
     EditorContent,
     UndoIcon,
@@ -52,8 +53,19 @@ export default {
       if (this.editor) this.editor.chain().focus().setParagraph().run();
     },
     addImage() {
-      const url = window.prompt('Введите ссылку на картинку');
-      if (url) this.editor.chain().focus().setImage({ src: url }).run();
+      const url = window.prompt('Укажите ссылку на изображение');
+
+      if (url) {
+        const img = new Image();
+        img.onload = () => {
+          this.editor.chain().focus().setImage({ src: url }).run();
+        };
+        img.onerror = () => {
+          alert('Упс! Ссылка на изображение неверна или такого изображения не существует');
+        };
+
+        img.src = url;
+      }
     },
     copyToClipboard() {
       if (this.editor && this.editor.options.content)
@@ -65,7 +77,7 @@ export default {
     this.editor = new Editor({
       extensions: [
         StarterKit,
-        Image,
+        TiptapImage,
         Placeholder.configure({
           placeholder: 'Введите текст...'
         })
@@ -83,7 +95,7 @@ export default {
   beforeUnmount() {
     if (this.editor) this.editor.destroy();
   }
-};
+});
 </script>
 
 <template>
@@ -152,11 +164,6 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.1s ease-in-out;
-}
-
-.toolbar__button--no-bg {
-  background-color: transparent;
-  width: auto;
 }
 
 .toolbar__button:hover {
