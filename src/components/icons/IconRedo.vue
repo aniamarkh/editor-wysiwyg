@@ -7,11 +7,21 @@
   </svg>
 </template>
 
-<script setup lang="ts">
-import { computed } from 'vue';
-const props = defineProps({
-  isDisabled: Boolean
-});
+<script lang="ts">
+import { defineComponent } from 'vue';
 
-const fillColor = computed(() => (props.isDisabled ? '#444444' : '#639EFF'));
+export default defineComponent({
+  props: {
+    isDisabled: {
+      type: Boolean,
+      default: false
+    }
+  },
+
+  computed: {
+    fillColor() {
+      return this.isDisabled ? '#444444' : '#639EFF';
+    }
+  }
+});
 </script>

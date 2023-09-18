@@ -29,7 +29,7 @@ h1 {
 p {
   font-size: 15px;
   line-height: 23px;
-  width: 621px;
+  max-width: 621px;
 }
 
 img {
@@ -43,4 +43,14 @@ img {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
