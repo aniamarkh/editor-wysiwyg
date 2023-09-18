@@ -24,10 +24,10 @@ export default defineComponent({
   data() {
     return {
       editor: null,
-      content: initialContent
+      copied: false
       // https://github.com/ueberdosis/tiptap/issues/1344
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as { editor: any };
+    } as { editor: any; copied: boolean };
   },
 
   computed: {
@@ -69,7 +69,12 @@ export default defineComponent({
     },
     copyToClipboard() {
       if (this.editor && this.editor.options.content)
-        navigator.clipboard.writeText(this.editor.getHTML());
+        navigator.clipboard.writeText(this.editor.getHTML()).then(() => {
+          this.copied = true;
+          setTimeout(() => {
+            this.copied = false;
+          }, 1500);
+        });
     }
   },
 
@@ -121,9 +126,12 @@ export default defineComponent({
         <ImageIcon />
         <span class="visually-hidden">Импортировать изображение</span>
       </button>
-      <button class="toolbar__button toolbar__button--no-bg" @click="copyToClipboard">
-        Скопировать HTML
-      </button>
+      <Transition name="fade" mode="out-in">
+        <p v-if="copied" class="toolbar__notification">Скопировано! 👌</p>
+        <button v-else class="toolbar__button toolbar__button--no-bg" @click="copyToClipboard">
+          Скопировать HTML
+        </button>
+      </Transition>
     </div>
     <EditorContent :editor="editor" />
   </div>
@@ -134,7 +142,7 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 20px;
-  width: 960px;
+  max-width: 960px;
   padding: 70px 100px;
   margin: 0 auto;
 }
@@ -151,6 +159,8 @@ export default defineComponent({
 .toolbar {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
+  width: 100%;
   gap: 12px;
 }
 
@@ -178,6 +188,11 @@ export default defineComponent({
   background-color: #282828;
 }
 
+.toolbar__button--no-bg {
+  background-color: transparent;
+  width: auto;
+}
+
 .toolbar__button--no-bg:hover {
   background-color: transparent;
   color: #9ac0ff;
@@ -189,5 +204,16 @@ export default defineComponent({
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+.toolbar__notification {
+  color: #639eff;
+  line-height: 38px;
+}
+
+@media (max-width: 480px) {
+  .editor-wrapper {
+    padding: 40px 30px;
+  }
 }
 </style>
