@@ -46,29 +46,41 @@ export default defineComponent({
     undo() {
       if (this.canUndo && this.editor) this.editor.chain().focus().undo().run();
     },
+
     redo() {
       if (this.canRedo && this.editor) this.editor.chain().focus().redo().run();
     },
+
     transformTo(type: 'h1' | 'p') {
       if (!this.editor) return;
-      const selection = this.editor.state.selection;
-      const parentNode = selection.$from.parent;
 
+      const selection = this.editor.state.selection;
+      if (selection.from >= selection.$from.start() && selection.to <= selection.$from.end()) {
+        this.handleSingleNodeSelection(type, selection);
+      } else {
+        this.handleMultiNodesSelection(type, selection);
+      }
+    },
+
+    handleSingleNodeSelection(type: 'h1' | 'p', selection: Selection) {
+      if (!this.editor) return;
+
+      const parentNode = this.editor.state.selection.$from.parent;
       const validSelection = selection && !selection.empty && parentNode.textContent;
 
       if (type === 'h1' && validSelection && parentNode.type.name === 'paragraph') {
-        this.applyTransformation('p', 'h1', selection, parentNode);
+        this.transformInSingleNode('p', 'h1', selection, parentNode);
       } else if (type === 'p' && validSelection && parentNode.type.name === 'heading') {
-        this.applyTransformation('h1', 'p', selection, parentNode);
+        this.transformInSingleNode('h1', 'p', selection, parentNode);
       } else if (!parentNode.textContent.length) {
         const command = type === 'h1' ? 'setHeading' : 'setParagraph';
-        if (this.editor) this.editor.chain().focus()[command]({ level: 1 }).run();
+        this.editor.chain().focus()[command]({ level: 1 }).run();
       } else {
         this.editor.chain().focus().run();
       }
     },
 
-    applyTransformation(
+    transformInSingleNode(
       fromType: 'p' | 'h1',
       toType: 'h1' | 'p',
       selection: Selection,
@@ -77,14 +89,15 @@ export default defineComponent({
       if (!this.editor) return;
       const { from, to } = selection;
 
-      const textBefore = parentNode.textBetween(0, from - selection.$from.start()).trim();
+      const textBefore = parentNode.textBetween(0, from - selection.$from.start());
       const selectedText = parentNode.textBetween(
         from - selection.$from.start(),
         to - selection.$from.start()
       );
-      const textAfter = parentNode
-        .textBetween(to - selection.$from.start(), parentNode.content.size)
-        .trim();
+      const textAfter = parentNode.textBetween(
+        to - selection.$from.start(),
+        parentNode.content.size
+      );
 
       let newContent = '';
       if (textBefore) newContent += `<${fromType}>${textBefore}</${fromType}>`;
@@ -97,9 +110,50 @@ export default defineComponent({
         .deleteSelection()
         .insertContent(newContent)
         .run();
-      // considering tags length
-      const newFocusPosition = from + selectedText.length + (toType === 'h1' ? 2 : 1);
+      // +2 to consider tags length
+      const newFocusPosition = from + selectedText.length + 2;
       this.editor.chain().setTextSelection(newFocusPosition).focus().run();
+    },
+
+    handleMultiNodesSelection(type: 'h1' | 'p', selection: Selection) {
+      if (!this.editor) return;
+
+      const state = this.editor.state;
+      const { from, to } = selection;
+      const nodeAtStart = state.doc.nodeAt(from);
+      const nodeAtEnd = state.doc.nodeAt(to);
+
+      // to delete all nodes in selection
+      const deleteFromPosition = this.editor.state.selection.$from.start();
+      const deleteToPosition = this.editor.state.selection.$to.end();
+
+      let newContent = '';
+      if (nodeAtStart && nodeAtEnd && nodeAtStart.text && nodeAtEnd.text) {
+        // if there is a text in nodes before and after selection
+        const textBeforeStart = nodeAtStart.text.slice(0, from - state.selection.$from.start());
+        const textAfterEnd = nodeAtEnd.text.slice(to - state.selection.$to.start());
+
+        const startTag = state.doc.resolve(from).parent.type.name === 'heading' ? 'h1' : 'p';
+        const endTag = state.doc.resolve(to).parent.type.name === 'heading' ? 'h1' : 'p';
+
+        if (textBeforeStart) newContent += `<${startTag}>${textBeforeStart}</${startTag}>`;
+        newContent += `<${type}>${state.doc.textBetween(from, to)}</${type}>`;
+        if (textAfterEnd) newContent += `<${endTag}>${textAfterEnd}</${endTag}>`;
+      } else if (!nodeAtEnd && nodeAtStart && nodeAtStart.text) {
+        // selection ends at the end of last node
+        const textBeforeStart = nodeAtStart.text.slice(0, from - state.selection.$from.start());
+        const startTag = state.doc.resolve(from).parent.type.name === 'heading' ? 'h1' : 'p';
+
+        if (textBeforeStart) newContent += `<${startTag}>${textBeforeStart}</${startTag}>`;
+        newContent += `<${type}>${state.doc.textBetween(from, to)}</${type}>`;
+      }
+
+      this.editor
+        .chain()
+        .setTextSelection({ from: deleteFromPosition, to: deleteToPosition })
+        .deleteSelection()
+        .insertContent(newContent)
+        .run();
     },
 
     addImage() {
@@ -118,6 +172,7 @@ export default defineComponent({
         img.src = url;
       }
     },
+
     copyToClipboard() {
       if (this.editor && this.editor.options.content)
         navigator.clipboard.writeText(this.editor.getHTML()).then(() => {
