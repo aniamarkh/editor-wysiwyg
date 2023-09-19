@@ -4,6 +4,9 @@ import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, Editor } from '@tiptap/vue-3';
 import { Image as TiptapImage } from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Selection } from 'prosemirror-state';
+import { Node } from '@tiptap/pm/model';
+
 import { initialContent } from './assets/content';
 import UndoIcon from './components/icons/IconUndo.vue';
 import RedoIcon from './components/icons/IconRedo.vue';
@@ -46,18 +49,66 @@ export default defineComponent({
     redo() {
       if (this.canRedo && this.editor) this.editor.chain().focus().redo().run();
     },
-    transformToTitle() {
-      if (this.editor) this.editor.chain().focus().setHeading({ level: 1 }).run();
+    transformTo(type: 'h1' | 'p') {
+      if (!this.editor) return;
+      const selection = this.editor.state.selection;
+      const parentNode = selection.$from.parent;
+
+      const validSelection = selection && !selection.empty && parentNode.textContent;
+
+      if (type === 'h1' && validSelection && parentNode.type.name === 'paragraph') {
+        this.applyTransformation('p', 'h1', selection, parentNode);
+      } else if (type === 'p' && validSelection && parentNode.type.name === 'heading') {
+        this.applyTransformation('h1', 'p', selection, parentNode);
+      } else if (!parentNode.textContent.length) {
+        const command = type === 'h1' ? 'setHeading' : 'setParagraph';
+        if (this.editor) this.editor.chain().focus()[command]({ level: 1 }).run();
+      } else {
+        this.editor.chain().focus().run();
+      }
     },
-    transformToParagraph() {
-      if (this.editor) this.editor.chain().focus().setParagraph().run();
+
+    applyTransformation(
+      fromType: 'p' | 'h1',
+      toType: 'h1' | 'p',
+      selection: Selection,
+      parentNode: Node
+    ) {
+      if (!this.editor) return;
+      const { from, to } = selection;
+
+      const textBefore = parentNode.textBetween(0, from - selection.$from.start()).trim();
+      const selectedText = parentNode.textBetween(
+        from - selection.$from.start(),
+        to - selection.$from.start()
+      );
+      const textAfter = parentNode
+        .textBetween(to - selection.$from.start(), parentNode.content.size)
+        .trim();
+
+      let newContent = '';
+      if (textBefore) newContent += `<${fromType}>${textBefore}</${fromType}>`;
+      newContent += `<${toType}>${selectedText}</${toType}>`;
+      if (textAfter) newContent += `<${fromType}>${textAfter}</${fromType}>`;
+
+      this.editor
+        .chain()
+        .setTextSelection({ from: selection.$from.start(), to: selection.$from.end() })
+        .deleteSelection()
+        .insertContent(newContent)
+        .run();
+      // considering tags length
+      const newFocusPosition = from + selectedText.length + (toType === 'h1' ? 2 : 1);
+      this.editor.chain().setTextSelection(newFocusPosition).focus().run();
     },
+
     addImage() {
       const url = window.prompt('Укажите ссылку на изображение');
 
-      if (url) {
+      if (url && this.editor) {
         const img = new Image();
         img.onload = () => {
+          if (!this.editor) return;
           this.editor.chain().focus().setImage({ src: url }).run();
         };
         img.onerror = () => {
@@ -114,11 +165,11 @@ export default defineComponent({
         <RedoIcon :isDisabled="!canRedo" />
         <span class="visually-hidden">Повторить</span>
       </button>
-      <button class="toolbar__button" @click="transformToTitle">
+      <button class="toolbar__button" @click="transformTo('h1')">
         <TitleIcon />
         <span class="visually-hidden">Преобразовать в заголовок</span>
       </button>
-      <button class="toolbar__button" @click="transformToParagraph">
+      <button class="toolbar__button" @click="transformTo('p')">
         <ParagraphIcon />
         <span class="visually-hidden">Преобразовать в параграф</span>
       </button>
