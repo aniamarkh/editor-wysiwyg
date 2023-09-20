@@ -88,16 +88,11 @@ export default defineComponent({
     ) {
       if (!this.editor) return;
       const { from, to } = selection;
-
-      const textBefore = parentNode.textBetween(0, from - selection.$from.start());
-      const selectedText = parentNode.textBetween(
-        from - selection.$from.start(),
-        to - selection.$from.start()
-      );
-      const textAfter = parentNode.textBetween(
-        to - selection.$from.start(),
-        parentNode.content.size
-      );
+      const nodeStart = selection.$from.start();
+      const nodeEnd = selection.$from.end();
+      const textBefore = parentNode.textBetween(0, from - nodeStart);
+      const selectedText = parentNode.textBetween(from - nodeStart, to - nodeStart);
+      const textAfter = parentNode.textBetween(to - nodeStart, parentNode.content.size);
 
       let newContent = '';
       if (textBefore) newContent += `<${fromType}>${textBefore}</${fromType}>`;
@@ -106,13 +101,11 @@ export default defineComponent({
 
       this.editor
         .chain()
-        .setTextSelection({ from: selection.$from.start(), to: selection.$from.end() })
+        .setTextSelection({ from: nodeStart, to: nodeEnd })
         .deleteSelection()
         .insertContent(newContent)
+        .focus(to + 2)
         .run();
-      // +2 to consider tags length
-      const newFocusPosition = from + selectedText.length + 2;
-      this.editor.chain().setTextSelection(newFocusPosition).focus().run();
     },
 
     handleMultiNodesSelection(type: 'h1' | 'p', selection: Selection) {
