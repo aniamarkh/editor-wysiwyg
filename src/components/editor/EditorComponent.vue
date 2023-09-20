@@ -44,6 +44,9 @@ export default defineComponent({
     },
     canRedo(): boolean {
       return this.editor ? this.editor.can().chain().focus().redo().run() : false;
+    },
+    canCopy(): boolean {
+      return this.editor ? this.editor.options.content : false;
     }
   },
 
@@ -107,7 +110,7 @@ export default defineComponent({
     },
 
     copyToClipboard() {
-      if (this.editor && this.editor.options.content)
+      if (this.editor)
         navigator.clipboard.writeText(this.editor.getHTML()).then(() => {
           this.copied = true;
           setTimeout(() => {
@@ -167,7 +170,12 @@ export default defineComponent({
       </button>
       <Transition name="fade" mode="out-in">
         <p v-if="copied" class="toolbar__notification">Скопировано! 👌</p>
-        <button v-else class="toolbar__button toolbar__button--no-bg" @click="copyToClipboard">
+        <button
+          v-else
+          class="toolbar__button toolbar__button--no-bg"
+          @click="copyToClipboard"
+          :disabled="!canCopy"
+        >
           Скопировать HTML
         </button>
       </Transition>
@@ -235,6 +243,15 @@ export default defineComponent({
 .toolbar__button--no-bg:hover {
   background-color: transparent;
   color: #9ac0ff;
+}
+
+.toolbar__button--no-bg:disabled {
+  color: #444444;
+  cursor: default;
+}
+
+.toolbar__button--no-bg:disabled:hover {
+  background-color: transparent;
 }
 
 .tiptap p.is-editor-empty:first-child::before {
