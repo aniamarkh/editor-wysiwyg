@@ -5,7 +5,6 @@ import { EditorContent, Editor } from '@tiptap/vue-3';
 import { Image as TiptapImage } from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 
-import { initialContent } from '@/assets/content';
 import * as formatter from './formatter';
 import UndoIcon from './icons/IconUndo.vue';
 import RedoIcon from './icons/IconRedo.vue';
@@ -14,6 +13,13 @@ import ParagraphIcon from './icons/IconParagraph.vue';
 import ImageIcon from './icons/IconImage.vue';
 
 export default defineComponent({
+  props: {
+    initialContent: {
+      type: String,
+      default: ''
+    }
+  },
+
   components: {
     EditorContent,
     UndoIcon,
@@ -120,7 +126,7 @@ export default defineComponent({
           placeholder: 'Введите текст...'
         })
       ],
-      content: initialContent,
+      content: this.initialContent,
       editorProps: {
         attributes: {
           class: 'editor'
