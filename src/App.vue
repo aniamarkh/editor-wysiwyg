@@ -4,9 +4,8 @@ import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, Editor } from '@tiptap/vue-3';
 import { Image as TiptapImage } from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Selection } from 'prosemirror-state';
-import { Node } from '@tiptap/pm/model';
 
+import * as formatter from '@/components/editor/formatter';
 import { initialContent } from './assets/content';
 import UndoIcon from './components/icons/IconUndo.vue';
 import RedoIcon from './components/icons/IconRedo.vue';
@@ -51,118 +50,37 @@ export default defineComponent({
       if (this.canRedo && this.editor) this.editor.chain().focus().redo().run();
     },
 
-    transformTo(type: 'h1' | 'p') {
+    formatSelectionTo(type: 'h1' | 'p') {
       if (!this.editor) return;
 
+      let formatedHTML = '';
       const selection = this.editor.state.selection;
-      if (selection.from >= selection.$from.start() && selection.to <= selection.$from.end()) {
-        this.handleSingleNodeSelection(type, selection);
+      const selectionInSingleNode =
+        selection.from >= selection.$from.start() && selection.to <= selection.$from.end();
+
+      if (selectionInSingleNode) {
+        const validSelection =
+          selection && !selection.empty && this.editor.state.selection.$from.parent.textContent;
+
+        if (validSelection) formatedHTML = formatter.formatInSingleNode(type, this.editor);
       } else {
-        this.handleMultiNodesSelection(type, selection);
+        formatedHTML = formatter.formatInMultiNodes(type, this.editor);
       }
-    },
 
-    handleSingleNodeSelection(type: 'h1' | 'p', selection: Selection) {
-      if (!this.editor) return;
-
-      const parentNode = this.editor.state.selection.$from.parent;
-      const validSelection = selection && !selection.empty && parentNode.textContent;
-
-      if (type === 'h1' && validSelection && parentNode.type.name === 'paragraph') {
-        this.transformInSingleNode('p', 'h1', selection, parentNode);
-      } else if (type === 'p' && validSelection && parentNode.type.name === 'heading') {
-        this.transformInSingleNode('h1', 'p', selection, parentNode);
-      } else if (!parentNode.textContent.length) {
+      if (formatedHTML) {
+        this.editor
+          .chain()
+          .setTextSelection({ from: selection.$from.start(), to: selection.$to.end() })
+          .deleteSelection()
+          .insertContent(formatedHTML)
+          .focus(selection.to + 2)
+          .run();
+      } else if (!this.editor.state.selection.$from.parent.textContent.length) {
         const command = type === 'h1' ? 'setHeading' : 'setParagraph';
         this.editor.chain().focus()[command]({ level: 1 }).run();
       } else {
         this.editor.chain().focus().run();
       }
-    },
-
-    transformInSingleNode(
-      fromType: 'p' | 'h1',
-      toType: 'h1' | 'p',
-      selection: Selection,
-      parentNode: Node
-    ) {
-      if (!this.editor) return;
-      const { from, to } = selection;
-      const nodeStart = selection.$from.start();
-      const nodeEnd = selection.$from.end();
-      const textBefore = parentNode.textBetween(0, from - nodeStart);
-      const selectedText = parentNode.textBetween(from - nodeStart, to - nodeStart);
-      const textAfter = parentNode.textBetween(to - nodeStart, parentNode.content.size);
-
-      let newContent = '';
-      if (textBefore) newContent += `<${fromType}>${textBefore}</${fromType}>`;
-      newContent += `<${toType}>${selectedText}</${toType}>`;
-      if (textAfter) newContent += `<${fromType}>${textAfter}</${fromType}>`;
-
-      this.editor
-        .chain()
-        .setTextSelection({ from: nodeStart, to: nodeEnd })
-        .deleteSelection()
-        .insertContent(newContent)
-        .focus(to + 2)
-        .run();
-    },
-
-    handleMultiNodesSelection(type: 'h1' | 'p', selection: Selection) {
-      if (!this.editor) return;
-
-      const state = this.editor.state;
-      const { from, to } = selection;
-
-      const startNode = state.doc.nodeAt(from);
-      const endNode = state.doc.nodeAt(to - 1);
-
-      let transformedContent = '';
-
-      state.doc.nodesBetween(from, to, (node: Node) => {
-        if (node.type.name !== 'text') {
-          // handle start node
-          if (startNode && (node === startNode || node.firstChild === startNode)) {
-            const beforeSelection = startNode.text?.slice(0, from - state.selection.$from.start());
-            const selection = startNode.text?.slice(
-              from - state.selection.$from.start(),
-              state.selection.$from.end()
-            );
-            const tag = state.doc.resolve(from).parent.type.name === 'heading' ? 'h1' : 'p';
-
-            if (beforeSelection) transformedContent += `<${tag}>${beforeSelection}</${tag}>`;
-            if (selection) transformedContent += `<${type}>${selection}`;
-          }
-          // handle end node
-          else if (endNode && (node === endNode || node.firstChild === endNode)) {
-            const selection = endNode.text?.slice(0, to - state.selection.$to.start());
-            const afterSelection = endNode.text?.slice(
-              to - state.selection.$to.start(),
-              state.selection.$to.end()
-            );
-            const tag = state.doc.resolve(to).parent.type.name === 'heading' ? 'h1' : 'p';
-            transformedContent += `${selection}</${type}>`;
-            if (afterSelection) transformedContent += `<${tag}>${afterSelection}</${tag}>`;
-          }
-          // handle other nodes based on type
-          else if (node.type.name === 'image') {
-            transformedContent += `</${type}><img src="${node.attrs.src}" /><${type}>`;
-          } else if (node.type.name === 'paragraph' || node.type.name === 'heading') {
-            transformedContent += `${node.textContent}`;
-          }
-        }
-      });
-
-      const deleteFromPosition = state.selection.$from.start();
-      const deleteToPosition = state.selection.$to.end();
-
-      this.editor
-        .chain()
-        .setTextSelection({ from: deleteFromPosition, to: deleteToPosition })
-        .deleteSelection()
-        .insertContent(transformedContent)
-        .focus(to + 2)
-        .run();
     },
 
     addImage() {
@@ -229,11 +147,11 @@ export default defineComponent({
         <RedoIcon :isDisabled="!canRedo" />
         <span class="visually-hidden">Повторить</span>
       </button>
-      <button class="toolbar__button" @click="transformTo('h1')">
+      <button class="toolbar__button" @click="formatSelectionTo('h1')">
         <TitleIcon />
         <span class="visually-hidden">Преобразовать в заголовок</span>
       </button>
-      <button class="toolbar__button" @click="transformTo('p')">
+      <button class="toolbar__button" @click="formatSelectionTo('p')">
         <ParagraphIcon />
         <span class="visually-hidden">Преобразовать в параграф</span>
       </button>
@@ -332,3 +250,4 @@ export default defineComponent({
   }
 }
 </style>
+@/components/editor/selection
