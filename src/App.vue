@@ -120,39 +120,55 @@ export default defineComponent({
 
       const state = this.editor.state;
       const { from, to } = selection;
-      const nodeAtStart = state.doc.nodeAt(from);
-      const nodeAtEnd = state.doc.nodeAt(to);
 
-      // to delete all nodes in selection
-      const deleteFromPosition = this.editor.state.selection.$from.start();
-      const deleteToPosition = this.editor.state.selection.$to.end();
+      const startNode = state.doc.nodeAt(from);
+      const endNode = state.doc.nodeAt(to - 1);
 
-      let newContent = '';
-      if (nodeAtStart && nodeAtEnd && nodeAtStart.text && nodeAtEnd.text) {
-        // if there is a text in nodes before and after selection
-        const textBeforeStart = nodeAtStart.text.slice(0, from - state.selection.$from.start());
-        const textAfterEnd = nodeAtEnd.text.slice(to - state.selection.$to.start());
+      let transformedContent = '';
 
-        const startTag = state.doc.resolve(from).parent.type.name === 'heading' ? 'h1' : 'p';
-        const endTag = state.doc.resolve(to).parent.type.name === 'heading' ? 'h1' : 'p';
+      state.doc.nodesBetween(from, to, (node: Node) => {
+        if (node.type.name !== 'text') {
+          // handle start node
+          if (startNode && (node === startNode || node.firstChild === startNode)) {
+            const beforeSelection = startNode.text?.slice(0, from - state.selection.$from.start());
+            const selection = startNode.text?.slice(
+              from - state.selection.$from.start(),
+              state.selection.$from.end()
+            );
+            const tag = state.doc.resolve(from).parent.type.name === 'heading' ? 'h1' : 'p';
 
-        if (textBeforeStart) newContent += `<${startTag}>${textBeforeStart}</${startTag}>`;
-        newContent += `<${type}>${state.doc.textBetween(from, to)}</${type}>`;
-        if (textAfterEnd) newContent += `<${endTag}>${textAfterEnd}</${endTag}>`;
-      } else if (!nodeAtEnd && nodeAtStart && nodeAtStart.text) {
-        // selection ends at the end of last node
-        const textBeforeStart = nodeAtStart.text.slice(0, from - state.selection.$from.start());
-        const startTag = state.doc.resolve(from).parent.type.name === 'heading' ? 'h1' : 'p';
+            if (beforeSelection) transformedContent += `<${tag}>${beforeSelection}</${tag}>`;
+            if (selection) transformedContent += `<${type}>${selection}`;
+          }
+          // handle end node
+          else if (endNode && (node === endNode || node.firstChild === endNode)) {
+            const selection = endNode.text?.slice(0, to - state.selection.$to.start());
+            const afterSelection = endNode.text?.slice(
+              to - state.selection.$to.start(),
+              state.selection.$to.end()
+            );
+            const tag = state.doc.resolve(to).parent.type.name === 'heading' ? 'h1' : 'p';
+            transformedContent += `${selection}</${type}>`;
+            if (afterSelection) transformedContent += `<${tag}>${afterSelection}</${tag}>`;
+          }
+          // handle other nodes based on type
+          else if (node.type.name === 'image') {
+            transformedContent += `</${type}><img src="${node.attrs.src}" /><${type}>`;
+          } else if (node.type.name === 'paragraph' || node.type.name === 'heading') {
+            transformedContent += `${node.textContent}`;
+          }
+        }
+      });
 
-        if (textBeforeStart) newContent += `<${startTag}>${textBeforeStart}</${startTag}>`;
-        newContent += `<${type}>${state.doc.textBetween(from, to)}</${type}>`;
-      }
+      const deleteFromPosition = state.selection.$from.start();
+      const deleteToPosition = state.selection.$to.end();
 
       this.editor
         .chain()
         .setTextSelection({ from: deleteFromPosition, to: deleteToPosition })
         .deleteSelection()
-        .insertContent(newContent)
+        .insertContent(transformedContent)
+        .focus(to + 2)
         .run();
     },
 
