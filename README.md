@@ -1,46 +1,84 @@
-# vue-project
+# WYSIWYG редактор на основе Tiptap и Vue
 
-This template should help get you started developing with Vue 3 in Vite.
+## Задача — сделать простенький WYSIWYG редактор для пользователя.
+- Должен работать на всех браузерах и платформах.
+- Должен быть удобным, доступным и не доставлять неудобств пользователю.
+- Срок — неделя
+## [Деплой](https://editor-wysiwyg.vercel.app/)
+### Реализованный функционал:
+- [x] **Текст внутри редактора свободно редактируется**
+- [x] **Можно перемещаться по истории редактирования текста**
+- [x] **Кнопки форматирования выделенного текста в заголовок или параграф**
+    - Если внутри выделенного текста есть картинка, при нажатии кнопки она остаётся на своём месте, а выделенный текст вокруг неё форматируется
+- [x] **Можно вставлять картинку на место курсора по URL через promt()**
+    - Ссылка на картинку валидируется, и пользователь получает сообщение, если что-то пошло не так
+- [x] **Кнопка для копирования HTML в буфер обмена**
+    - После нажатия на кнопку появляется сообщение, что пользователь успешно скопировал HTML в буфер обмена
+     
+Для реализации выбрала библиотеку TipTap на основе ProseMirror.
 
-## Recommended IDE Setup
+Такое решение пришло не сразу. Ниже описала как проводила рисёрч, экспериментировала и почему остановилась на библиотеке вместо кастомного решения.  
+Было интересно :)
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
 
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
-
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
-
-1. Disable the built-in TypeScript Extension
-    1) Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-    2) Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
-
-```sh
+### Project Setup & Compile for Development
+```
 npm install
 ```
-
-### Compile and Hot-Reload for Development
-
-```sh
+```
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
 
-```sh
-npm run build
-```
+## Почему tiptap?
 
-### Lint with [ESLint](https://eslint.org/)
+Текстовый редактор я реализую впервые. Поэтому в первую очередь я потратила несколько часов на «рисёрч».
 
-```sh
-npm run lint
-```
+Нашла [awesome list](https://github.com/JefMari/awesome-wysiwyg-editors#for-vue) WYSIWYG модулей.  
+Посмотрела на код библиотек [Quill](https://github.com/quilljs/quill), [TineMCE](https://github.com/tinymce/tinymce) и [ProseMirror](https://github.com/prosemirror)  
+Посмотрела [лекцию Сергея Чикуёнка](https://www.youtube.com/watch?v=TDZcDXdBjn) из ok.ru.
+
+И на этом этапе сформировалось три пути, по которым можно пойти:
+
+## 1. Написать собственное "простое" решение.
+
+У Prose Mirror великолепная документация и ясный код. Оттуда я почерпнула больше всего и ознакомилась с примерной архитектурой библиотек для WYSIWYG:
+Все они базируются на подходе «Model View Controller».
+
+- **Модель** — хранит "ноды", которые отражат структуру, формат и содержимое текста.  
+Работа с HTML в `contenteditable` довольно громоздкая, особенно из-за древовидной структуры HTML нод. Модель помогает перейти от ветвистого дерева к "плоскому" списку нод, вроде `{type, format, content}`.  
+С такой структурой данных легче работать и не требуются сложные алгоритмы прохода по дереву и разбивания его на блоки при форматировании.
+- **Вью** — рендерит модель в HTML и обновляет `contenteditable` блок в ответ на изменение модели.
+- **Контроллер** — перехватывает ввод пользователя: нажатия на клавиатуру, сочетания клавиш, свайпы, клики и прочие ивенты.  
+Преобразует их в "транзакции" в которых закодированы трансформация, положение каретки, выделения и т.п. 
+
+Модель замкнута в цикле: контроллер перехватывает ивент → передаёт в модель транзакцию → модель возвращает новое состояние → которое затем рендерится вьюхой. А история действий сохраняется в виде стейта + стека из транзакциий.
+Такой подход позволяет как угодно кастомизировать поведение редактора. 
+
+**Но это довольно сложно.**
+
+Сначала я нацелилась реализовать простейшую MVC модель, но в процессе стало ясно, как много краевых случаев нужно обработать для разных сценариев, браузеров, систем ввода и языков.
+
+Да, это был код без зависимостей и написанный самостоятельно.  
+_Но он не решал задачу:_
+- Редактор получался "шаткий". Пользователи натыкались бы на баги и страдали.
+- Я не укладывалась в недельный срок, который я поставила себе на задачу.
+
+Это резонировало с опытом [Сергея Чикуёнка](https://www.youtube.com/watch?v=TDZcDXdBjn), фронтэнд разработчика из ok.ru.  
+Они разрабатывали свой редактор несколько месяцев большой командой и впоследствии могли позволить себе ещё долгое время собирать и решать баги и краевые случаи.
+
+## 2. Использовать API [document.execCommand](https://developer.mozilla.org/en-US/docs/Web/API/Document/execCommand)
+
+Конечно, простота решения завлекает:
+`document.execCommant` и блок `contenteditable` решают все поставленные задачи. Но на устаревшие API полагаться нельзя.
+
+## 3. Использовать библиотеку
+
+После рисерча и попытки написать решение "с нуля" стало понятно, что это не тот велосипед, который стоит изобретать с нуля.  
+[WYSIWYG библиотек много](https://github.com/JefMari/awesome-wysiwyg-editors#for-vue). Есть тяжёлые и полегче. Есть "всё в одном" и супер модульные.
+
+Мудрые люди уже всё решили, поймали все краевые случаи, десятками лет адаптировали под разные сценарии и браузеры.  
+Обратимся к их мудрости :)
+
+Я выбрала библиотеку [tiptap](https://tiptap.dev/), которая основана на ProseMirror и легко интегрируется в компонент Vue. Документация и код ProseMirror — пример для подражания. Изучая код и доки я многому научилась.  
+Мне понравилось, что он не диктует своего поведения, а работает как "фреймворк". Это то, что нам нужно.
